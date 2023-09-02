@@ -418,15 +418,17 @@ def main_worker(gpu, ngpus_per_node, args):
 
     start_time = time.time()
     duration = 0
-
+    print("--------")
+    print("batch_size: ", args.batch_size)
+    print("--------")
     num_log_images = args.batch_size
     end_learning_rate = args.end_learning_rate if args.end_learning_rate != -1 else 0.1 * args.learning_rate
 
-    var_sum = [var.sum() for var in model.parameters() if var.requires_grad]
-    var_cnt = len(var_sum)
-    var_sum = np.sum(var_sum)
+    #var_sum = [var.sum() for var in model.parameters() if var.requires_grad]
+    #var_cnt = len(var_sum)
+    #var_sum = np.sum(var_sum)
 
-    print("Initial variables' sum: {:.3f}, avg: {:.3f}".format(var_sum, var_sum/var_cnt))
+    #print("Initial variables' sum: {:.3f}, avg: {:.3f}".format(var_sum, var_sum/var_cnt))
 
     steps_per_epoch = len(dataloader.data)
     num_total_steps = args.num_epochs * steps_per_epoch
@@ -467,23 +469,26 @@ def main_worker(gpu, ngpus_per_node, args):
 
             duration += time.time() - before_op_time
             if global_step and global_step % args.log_freq == 0 and not model_just_loaded:
-                var_sum = [var.sum() for var in model.parameters() if var.requires_grad]
-                var_cnt = len(var_sum)
-                var_sum = np.sum(var_sum)
+                #var_sum = [var.sum() for var in model.parameters() if var.requires_grad]
+                #var_cnt = len(var_sum)
+                #var_sum = np.sum(var_sum)
                 examples_per_sec = args.batch_size / duration * args.log_freq
                 duration = 0
                 time_sofar = (time.time() - start_time) / 3600
                 training_time_left = (num_total_steps / global_step - 1.0) * time_sofar
                 if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
                     print("{}".format(args.model_name))
-                print_string = 'GPU: {} | examples/s: {:4.2f} | loss: {:.5f} | var sum: {:.3f} avg: {:.3f} | time elapsed: {:.2f}h | time left: {:.2f}h'
-                print(print_string.format(args.gpu, examples_per_sec, loss, var_sum.item(), var_sum.item()/var_cnt, time_sofar, training_time_left))
+                #print_string = 'GPU: {} | examples/s: {:4.2f} | loss: {:.5f} | var sum: {:.3f} avg: {:.3f} | time elapsed: {:.2f}h | time left: {:.2f}h'
+                #print(print_string.format(args.gpu, examples_per_sec, loss, var_sum.item(), var_sum.item()/var_cnt, time_sofar, training_time_left))
+
+                print_string = 'GPU: {} | examples/s: {:4.2f} | loss: {:.5f} | var sum: ???? avg: ???? | time elapsed: {:.2f}h | time left: {:.2f}h'
+                print(print_string.format(args.gpu, examples_per_sec, loss, time_sofar, training_time_left))
 
                 if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                                                             and args.rank % ngpus_per_node == 0):
                     writer.add_scalar('silog_loss', loss, global_step)
                     writer.add_scalar('learning_rate', current_lr, global_step)
-                    writer.add_scalar('var average', var_sum.item()/var_cnt, global_step)
+                    #writer.add_scalar('var average', var_sum.item()/var_cnt, global_step)
                     depth_gt = torch.where(depth_gt < 1e-3, depth_gt * 0 + 1e3, depth_gt)
                     for i in range(num_log_images):
                         writer.add_image('depth_gt/image/{}'.format(i), normalize_result(1/depth_gt[i, :, :, :].data), global_step)
@@ -501,6 +506,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                   'model': model.state_dict(),
                                   'optimizer': optimizer.state_dict()}
                     torch.save(checkpoint, args.log_directory + '/' + args.model_name + '/model-{}'.format(global_step))
+                    print("[?] Save to ", args.log_directory + '/' + args.model_name + '/model-{}'.format(global_step))
 
             if args.do_online_eval and global_step and global_step % args.eval_freq == 0 and not model_just_loaded:
                 time.sleep(0.1)
@@ -537,6 +543,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                           'best_eval_steps': best_eval_steps
                                           }
                             torch.save(checkpoint, args.log_directory + '/' + args.model_name + model_save_name)
+                            print('[!] Save to ', args.log_directory + '/' + args.model_name + model_save_name)
                     eval_summary_writer.flush()
                 model.train()
                 block_print()
@@ -545,6 +552,9 @@ def main_worker(gpu, ngpus_per_node, args):
 
             model_just_loaded = False
             global_step += 1
+
+
+            #if step == 10: break # <------------------------
 
         epoch += 1
        
@@ -597,6 +607,7 @@ def main():
         print("This will evaluate the model every eval_freq {} steps and save best models for individual eval metrics."
               .format(args.eval_freq))
 
+    
     if args.multiprocessing_distributed:
         args.world_size = ngpus_per_node * args.world_size
         mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))

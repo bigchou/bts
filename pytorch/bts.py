@@ -261,6 +261,9 @@ class bts(nn.Module):
         iconv1 = self.conv1(concat1)
         final_depth = self.params.max_depth * self.get_depth(iconv1)
         if self.params.dataset == 'kitti':
+            # https://github.com/cleinc/bts/issues/63
+            # scale depth estimations with focal value
+            # divided by average focal length computed across the training set.
             final_depth = final_depth * focal.view(-1, 1, 1, 1).float() / 715.0873
         
         return depth_8x8_scaled, depth_4x4_scaled, depth_2x2_scaled, reduc1x1, final_depth

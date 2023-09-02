@@ -21,7 +21,7 @@ import argparse
 import time
 import numpy as np
 import cv2
-import sys
+import sys, pdb
 
 import torch
 import torch.nn as nn
@@ -113,10 +113,13 @@ def test(params):
     start_time = time.time()
     with torch.no_grad():
         for _, sample in enumerate(tqdm(dataloader.data)):
-            image = Variable(sample['image'].cuda())
-            focal = Variable(sample['focal'].cuda())
+            image = Variable(sample['image'].cuda()) # torch.Size([1, 3, 352, 1216])
+            focal = Variable(sample['focal'].cuda()) # torch.Size([1])
             # Predict
             lpg8x8, lpg4x4, lpg2x2, reduc1x1, depth_est = model(image, focal)
+            #pdb.set_trace()
+            # lpg8x8.shape = lpg4x4.shape = lpg2x2.shape = reduc1x1.shape = depth_est.shape = (1, 1, 352, 1216)
+
             pred_depths.append(depth_est.cpu().numpy().squeeze())
             pred_8x8s.append(lpg8x8[0].cpu().numpy().squeeze())
             pred_4x4s.append(lpg4x4[0].cpu().numpy().squeeze())
