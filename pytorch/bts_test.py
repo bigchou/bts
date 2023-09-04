@@ -85,7 +85,9 @@ def test(params):
     """Test function."""
     args.mode = 'test'
     dataloader = BtsDataLoader(args, 'test')
-    
+
+    #import pdb
+    #pdb.set_trace()
     model = BtsModel(params=args)
     model = torch.nn.DataParallel(model)
     
@@ -167,7 +169,7 @@ def test(params):
             filename_image_png = save_name + '/rgb/' + scene_name + '_' + lines[s].split()[0].split('/')[1]
         
         rgb_path = os.path.join(args.data_path, './' + lines[s].split()[0])
-        image = cv2.imread(rgb_path)
+        image = cv2.imread(rgb_path) # 375 x 1242 x 3
         if args.dataset == 'nyu':
             gt_path = os.path.join(args.data_path, './' + lines[s].split()[1])
             gt = cv2.imread(gt_path, -1).astype(np.float32) / 1000.0  # Visualization purpose only
@@ -186,6 +188,15 @@ def test(params):
         
         pred_depth_scaled = pred_depth_scaled.astype(np.uint16)
         cv2.imwrite(filename_pred_png, pred_depth_scaled, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+        #cv2.imwrite('sdfsfsfsf.png', pred_depth_scaled, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+        '''
+        (Pdb) pred_depth_scaled.shape
+        (352, 1216)
+        (Pdb) pred_depth_scaled.dtype
+        dtype('uint16')
+        '''
+        #import pdb
+        #pdb.set_trace()
         
         if args.save_lpg:
             cv2.imwrite(filename_image_png, image[10:-1 - 9, 10:-1 - 9, :])

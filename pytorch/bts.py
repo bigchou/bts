@@ -281,6 +281,10 @@ class encoder(nn.Module):
             self.base_model = models.densenet161(pretrained=True).features
             self.feat_names = ['relu0', 'pool0', 'transition1', 'transition2', 'norm5']
             self.feat_out_channels = [96, 96, 192, 384, 2208]
+        elif params.encoder == 'resnet18_bts':
+            self.base_model = models.resnet18(pretrained=True)
+            self.feat_names = ['relu', 'layer1', 'layer2', 'layer3', 'layer4']
+            self.feat_out_channels = [64, 64, 128, 256, 512]
         elif params.encoder == 'resnet50_bts':
             self.base_model = models.resnet50(pretrained=True)
             self.feat_names = ['relu', 'layer1', 'layer2', 'layer3', 'layer4']
