@@ -100,7 +100,7 @@ class Namespace:
 
 params = {
     'bts_size':512,
-    'checkpoint_path':'./models/bts_eigen_v2_pytorch_res18/model-120000-best_abs_rel_0.06316',
+    'checkpoint_path':'./models/bts_eigen_v2_pytorch_res18/res18_model-120000-best_abs_rel_0.06316',
     'data_path':'../../dataset/kitti_dataset/',
     'dataset':'kitti',
     'encoder':'resnet18_bts',
@@ -129,32 +129,50 @@ num_samples = 10
 image_pathlist = sorted(glob('data/*.png'))[:num_samples]
 
 print(size)
-out = cv2.VideoWriter('project.mp4', cv2.VideoWriter_fourcc(*'MP4V'), 3, size)
+
+fps = 30
+out = cv2.VideoWriter('project.mp4', cv2.VideoWriter_fourcc(*'MP4V'), fps, size)
 
 
+
+
+name = '20230822_230014-00.00.22.922-00.01.09.469resize'
+#name = 'alotoftrafficcone_20230822_224515-00.00.50.625-00.02.30.609-00.00.15.088-00.00.20.380resize'
+cap = cv2.VideoCapture(name+'.mp4')
 
 
 transform = preprocessing_transforms('test')
 
+counter = 0
 
-for image_path in image_pathlist:
+#for image_path in image_pathlist:
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
+
     # preproc
-    image = np.asarray(Image.open(image_path), dtype=np.float32) / 255.0
+    #image = np.asarray(Image.open(image_path), dtype=np.float32) / 255.0
+
+    image = np.asarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), dtype=np.float32) / 255.0
+    
+
     if args.do_kb_crop is True:
         height = image.shape[0]
         width = image.shape[1]
         top_margin = int(height - 352)
         left_margin = int((width - 1216) / 2)
         image = image[top_margin:top_margin + 352, left_margin:left_margin + 1216, :]
-    focal = 721.5377
+    focal = 174.6286
+    #focal = 721.5377
     sample = {'image': image, 'focal': focal}
     sample = transform(sample)
-    
+
 
     
     with torch.no_grad():
         image = torch.unsqueeze(sample['image'], dim=0).cuda() # torch.Size([1, 3, 352, 1216])
-        print(image.shape)
+        print(">>>>", image.shape)
         focal = torch.Tensor([focal]).cuda() # torch.Size([1]) = torch.Tensor([721.5377]).cuda()
         lpg8x8, lpg4x4, lpg2x2, reduc1x1, depth_est = model(image, focal)
     #pdb.set_trace()
@@ -176,7 +194,8 @@ for image_path in image_pathlist:
     depth = pred_depth
 
 
-    print(image_path, depth.min(), depth.max(), depth.shape, depth.dtype)
+    #print(image_path, depth.min(), depth.max(), depth.shape, depth.dtype)
+    print(depth.min(), depth.max(), depth.shape, depth.dtype)
 
     #pdb.set_trace()
 
@@ -184,7 +203,8 @@ for image_path in image_pathlist:
 
 
     # image for visualization
-    image = cv2.imread(image_path)
+    #image = cv2.imread(image_path)
+    image = frame
     if args.do_kb_crop:
         height = image.shape[0]
         width = image.shape[1]
@@ -198,7 +218,7 @@ for image_path in image_pathlist:
     # Saving colormapped depth image
     #vmax = np.percentile(depth, 95)
     #vmin, vmax = depth.min(), depth.max()
-    vmin, vmax = 0.1, 80
+    vmin, vmax = 0.1, 40
     normalizer = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
     mapper = cm.ScalarMappable(norm=normalizer, cmap='magma_r')
     colormapped_im = (mapper.to_rgba(depth)[:, :, :3] * 255).astype(np.uint8)
@@ -218,13 +238,35 @@ for image_path in image_pathlist:
 
     #pdb.set_trace()
     print('>>>',open_cv_image.shape, image.shape)
+
+
+
+
+    #### draw grid
+    h, w = depth.shape
+    grid_h, grid_w = 32, 32
+    windowsize_h = int(h / grid_h)
+    windowsize_w = int(w / grid_w)
+    for ypos in range(0, h-windowsize_h+1, windowsize_h):
+        for xpos in range(0, w-windowsize_w+1, windowsize_w):
+            window = depth[ypos:ypos+windowsize_h, xpos:xpos+windowsize_w]
+            mean = np.round(np.mean(window), 2)
+            cv2.putText(image, str(mean), (xpos+10, ypos+10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1 ,1)
+
+
+
+
+
+
     open_cv_image = cv2.vconcat([open_cv_image, image])
     print("||||",open_cv_image.shape)
     #cv2.imwrite('bbbb.png', open_cv_image)
     #pdb.set_trace()
 
     out.write(open_cv_image)
+    counter+=1
 out.release()
+cap.release()
 exit()
 
 import pdb
