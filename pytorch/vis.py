@@ -135,7 +135,7 @@ out = cv2.VideoWriter('project.mp4', cv2.VideoWriter_fourcc(*'MP4V'), fps, size)
 
 
 
-
+#name = 'change lane_20230822_224815-00.01.13.828-00.03.00.000resize'
 name = '20230822_230014-00.00.22.922-00.01.09.469resize'
 #name = 'alotoftrafficcone_20230822_224515-00.00.50.625-00.02.30.609-00.00.15.088-00.00.20.380resize'
 cap = cv2.VideoCapture(name+'.mp4')
@@ -145,6 +145,8 @@ transform = preprocessing_transforms('test')
 
 counter = 0
 
+
+img_array = []
 #for image_path in image_pathlist:
 while cap.isOpened():
     ret, frame = cap.read()
@@ -155,6 +157,12 @@ while cap.isOpened():
     #image = np.asarray(Image.open(image_path), dtype=np.float32) / 255.0
 
     image = np.asarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), dtype=np.float32) / 255.0
+
+
+
+
+
+
     
 
     if args.do_kb_crop is True:
@@ -163,7 +171,8 @@ while cap.isOpened():
         top_margin = int(height - 352)
         left_margin = int((width - 1216) / 2)
         image = image[top_margin:top_margin + 352, left_margin:left_margin + 1216, :]
-    focal = 174.6286
+    #focal = 950
+    focal = 580
     #focal = 721.5377
     sample = {'image': image, 'focal': focal}
     sample = transform(sample)
@@ -172,7 +181,7 @@ while cap.isOpened():
     
     with torch.no_grad():
         image = torch.unsqueeze(sample['image'], dim=0).cuda() # torch.Size([1, 3, 352, 1216])
-        print(">>>>", image.shape)
+        #print(">>>>", image.shape)
         focal = torch.Tensor([focal]).cuda() # torch.Size([1]) = torch.Tensor([721.5377]).cuda()
         lpg8x8, lpg4x4, lpg2x2, reduc1x1, depth_est = model(image, focal)
     #pdb.set_trace()
@@ -195,7 +204,7 @@ while cap.isOpened():
 
 
     #print(image_path, depth.min(), depth.max(), depth.shape, depth.dtype)
-    print(depth.min(), depth.max(), depth.shape, depth.dtype)
+    print('depth info:',depth.min(), depth.max(), depth.shape, depth.dtype)
 
     #pdb.set_trace()
 
@@ -237,14 +246,15 @@ while cap.isOpened():
     #open_cv_image = cv2.resize(open_cv_image, (w, h))
 
     #pdb.set_trace()
-    print('>>>',open_cv_image.shape, image.shape)
+    print('concate.shape:',open_cv_image.shape, image.shape)
 
 
 
 
     #### draw grid
     h, w = depth.shape
-    grid_h, grid_w = 32, 32
+    #grid_h, grid_w = 32, 32
+    grid_h, grid_w = 16, 16
     windowsize_h = int(h / grid_h)
     windowsize_w = int(w / grid_w)
     for ypos in range(0, h-windowsize_h+1, windowsize_h):
@@ -259,14 +269,23 @@ while cap.isOpened():
 
 
     open_cv_image = cv2.vconcat([open_cv_image, image])
-    print("||||",open_cv_image.shape)
+    #print("||||",open_cv_image.shape)
     #cv2.imwrite('bbbb.png', open_cv_image)
     #pdb.set_trace()
 
-    out.write(open_cv_image)
+    #out.write(open_cv_image)
+    img_array.append(open_cv_image)
     counter+=1
-out.release()
+
 cap.release()
+
+
+for i in range(len(img_array)):
+    out.write(img_array[i])
+
+out.release()
+
+
 exit()
 
 import pdb
